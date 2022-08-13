@@ -48,6 +48,13 @@ class Config(BaseSettings):
         env_prefix = "NOTE_TEMPLATE_CONFIG_"
 
 
+def generate_default_config(filename):
+    config = Config().dict()
+    with open(filename, "w", encoding="utf-8") as file:
+        toml.dump(config, file)
+    print(os.path.abspath(filename))
+
+
 def file_name_without_extension(filename: str) -> str:
     result = re.search("^.*(?=\.[^\.]*$)", filename)
     if result:
