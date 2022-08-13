@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+
+import toml
+import os
+from note_template import cli as note_template_cli
+
+config = note_template_cli.Config().dict()
+filename = "default_config.toml"
+
+with open(filename, "w", encoding="utf-8") as file:
+    toml.dump(config, file)
+print(os.path.abspath(filename))
