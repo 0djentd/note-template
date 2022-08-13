@@ -49,6 +49,8 @@ class Config(BaseSettings):
 
 
 def generate_default_config(filename):
+    if not os.path.exists(_CONFIG_DIR):
+        os.makedirs(_CONFIG_DIR)
     config = Config().dict()
     with open(filename, "w", encoding="utf-8") as file:
         toml.dump(config, file)
@@ -170,13 +172,46 @@ def templates_list(context):
         print(file_name_without_extension(template.name))
 
 
-@commands.command()
-@click.argument("filename", required=False)
+@templates.command("edit")
+@click.argument("template", nargs=-1, type=str)
 @click.pass_context
-def generate_config(filename):
-    if filename is None:
-        filename = _CONFIG_FILE_PATH
+def new_template(context, template):
+    config = context.obj
+    for template_name in template:
+        template_file_path = os.path.join(config.templates_dir, template_name)
+        subprocess.call([config.editor, template_file_path])
+
+
+@templates.command("remove")
+@click.argument("template", nargs=-1, type=str)
+@click.pass_context
+def remove_template(context, template):
+    config = context.obj
+    for template_name in template:
+        file_path = get_template_file_path(config, template_name)
+        os.remove(file_path)
+
+
+@commands.group("config")
+@click.pass_context
+def config_commands(context):
+    return
+
+
+@config_commands.command("generate")
+@click.argument("filename", default=_CONFIG_FILE_PATH)
+@click.pass_context
+def generate_config(context, filename):
     generate_default_config(filename)
+
+
+@config_commands.command("show")
+@click.pass_context
+def show_config(context):
+    config_data = read_config_file()
+    pprint(config_data)
+
+
 
 
 if __name__ == "__main__":
