@@ -100,14 +100,15 @@ def filter_dictionary(dictionary) -> dict:
 
 
 def read_config_file():
-    data = None
-    with open(_CONFIG_FILE_PATH, "r") as file:
-        data = toml.load(file)
-    return data
+    if os.path.exists(_CONFIG_FILE_PATH):
+        data = None
+        with open(_CONFIG_FILE_PATH, "r") as file:
+            data = toml.load(file)
+        return data
+    return {}
 
 
-@click.command()
-@click.argument("template", nargs=-1, required=True)
+@click.group()
 @click.option("--data-dir", type=str, required=False, help="Data directory.")
 @click.option("--config-dir", type=str, required=False, help="Config directory.")
 @click.option("--cache-dir", type=str, required=False, help="Cache directory.")
@@ -118,10 +119,10 @@ def read_config_file():
 @click.option("--templates-dir", type=str, required=False, help="Templates directory.")
 @click.option("--notes-dir", type=str, required=False, help="Notes directory.")
 @click.option("--editor", type=str, required=False, help="Text editor.")
-@click.option("--create-default-directories", required=False)
-@click.option("--dont-save-note-if-no-changes", required=False)
+@click.option("--create-default-directories", type=bool, required=False)
+@click.option("--dont-save-note-if-no-changes", type=bool, required=False)
 @click.pass_context
-def commands(context, template, **kwargs):
+def commands(context, **kwargs):
     config_kwargs = read_config_file()
     config_kwargs.update(filter_dictionary(kwargs))
     config = Config(**config_kwargs)
@@ -132,6 +133,13 @@ def commands(context, template, **kwargs):
         logger.setLevel(level=logging.DEBUG)
         logging.basicConfig(level=logging.DEBUG)
         pprint(context.obj)
+
+
+@commands.command("new")
+@click.argument("template", nargs=-1, required=True)
+@click.pass_context
+def new_note(context, template):
+    config = context.obj
     for note_template in template:
         template_file_path = get_template_file_path(config, note_template)
         note_type_dir = os.path.join(config.notes_dir, note_template)
@@ -146,6 +154,29 @@ def commands(context, template, **kwargs):
             if new_file_hash == old_file_hash:
                 logging.info("File not modified, removing.")
                 os.remove(note_file_path)
+
+
+@commands.group()
+@click.pass_context
+def templates(context):
+    return
+
+
+@templates.command("list")
+@click.pass_context
+def templates_list(context):
+    config = context.obj
+    for template in os.scandir(config.templates_dir):
+        print(file_name_without_extension(template.name))
+
+
+@commands.command()
+@click.argument("filename", required=False)
+@click.pass_context
+def generate_config(filename):
+    if filename is None:
+        filename = _CONFIG_FILE_PATH
+    generate_default_config(filename)
 
 
 if __name__ == "__main__":
