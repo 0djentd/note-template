@@ -1,21 +1,18 @@
+import datetime
+import hashlib
 import logging
 import os
-import shutil
 import re
-import datetime
-import sys
+import shutil
 import subprocess
-import hashlib
-
+import sys
 from dataclasses import dataclass
 from pprint import pprint
 
-import click
 import appdirs
+import click
 import toml
-
-from pydantic import BaseSettings, BaseModel
-
+from pydantic import BaseModel, BaseSettings
 
 # Default directories
 app_dir_settings = {"appname": "note-template"}
@@ -26,8 +23,9 @@ _STATE_DIR = appdirs.user_state_dir(**app_dir_settings)
 _LOG_DIR = appdirs.user_log_dir(**app_dir_settings)
 _TEMPLATES_DIR = os.path.join(_STATE_DIR, "default_templates_dir")
 _NOTES_DIR = os.path.join(_STATE_DIR, "default_notes_dir")
-_CONFIG_FILE_PATH = os.environ.get("NOTE_TEMPLATE_CONFIG_FILE",
-                                   os.path.join(_CONFIG_DIR, "config.toml"))
+_CONFIG_FILE_PATH = os.environ.get(
+    "NOTE_TEMPLATE_CONFIG_FILE", os.path.join(_CONFIG_DIR, "config.toml")
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +58,10 @@ def file_name_without_extension(filename: str) -> str:
 def get_template_file_path(config, template_name):
     for file in os.scandir(config.templates_dir):
         os.path.isfile(file.path)
-        if template_name == file_name_without_extension(file.name)\
-                or template_name == file.name:
+        if (
+            template_name == file_name_without_extension(file.name)
+            or template_name == file.name
+        ):
             return file.path
     filename = os.path.join(config.templates_dir, template_name)
     raise FileNotFoundError(filename)
@@ -83,6 +83,7 @@ def file_hash(file_path) -> str:
         hashfunc.update(file.read())
     return hashfunc.hexdigest()
 
+
 def filter_dictionary(dictionary) -> dict:
     result = {}
     for key, val in dictionary.items():
@@ -98,29 +99,18 @@ def read_config_file():
     return data
 
 
-
 @click.command()
 @click.argument("template", nargs=-1, required=True)
-@click.option("--data-dir", type=str, required=False,
-              help="Data directory.")
-@click.option("--config-dir", type=str, required=False,
-              help="Config directory.")
-@click.option("--cache-dir", type=str, required=False,
-              help="Cache directory.")
-@click.option("--state-dir", type=str, required=False,
-              help="State directory.")
-@click.option("--log-dir", type=str, required=False,
-              help="Log directory.")
-@click.option("--verbose/--no-verbose",
-              help="Show additional information.")
-@click.option("--debug/--no-debug",
-              help="Show debug information.")
-@click.option("--templates-dir", type=str, required=False,
-              help="Templates directory.")
-@click.option("--notes-dir", type=str, required=False,
-              help="Notes directory.")
-@click.option("--editor", type=str, required=False,
-              help="Text editor.")
+@click.option("--data-dir", type=str, required=False, help="Data directory.")
+@click.option("--config-dir", type=str, required=False, help="Config directory.")
+@click.option("--cache-dir", type=str, required=False, help="Cache directory.")
+@click.option("--state-dir", type=str, required=False, help="State directory.")
+@click.option("--log-dir", type=str, required=False, help="Log directory.")
+@click.option("--verbose/--no-verbose", help="Show additional information.")
+@click.option("--debug/--no-debug", help="Show debug information.")
+@click.option("--templates-dir", type=str, required=False, help="Templates directory.")
+@click.option("--notes-dir", type=str, required=False, help="Notes directory.")
+@click.option("--editor", type=str, required=False, help="Text editor.")
 @click.option("--create-default-directories", required=False)
 @click.option("--dont-save-note-if-no-changes", required=False)
 @click.pass_context
