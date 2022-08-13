@@ -1,5 +1,11 @@
 import logging
 import os
+import shutil
+import re
+import datetime
+import sys
+import subprocess
+import hashlib
 
 from dataclasses import dataclass
 from pprint import pprint
@@ -40,12 +46,50 @@ class Config:
     data_dir: str
     config_dir: str
     state_dir: str
+    cache_dir: str
     log_dir: str
     templates_dir: str
     notes_dir: str
+    create_default_directories: bool
+    dont_save_note_if_no_changes: bool
+    editor: str
 
 
-@click.group()
+def file_name_without_extension(filename: str) -> str:
+    result = re.search("^.*(?=\.[^\.]*$)", filename)
+    if result:
+        return result.group()
+    return filename
+
+
+def get_template_file_path(config, template_name):
+    for file in os.scandir(config.templates_dir):
+        os.path.isfile(file.path)
+        if template_name == file_name_without_extension(file.name)\
+                or template_name == file.name:
+            return file.path
+    filename = os.path.join(config.templates_dir, template_name)
+    raise FileNotFoundError(filename)
+
+
+def check_directory(directory: str, create: bool) -> None:
+    if os.path.exists(directory):
+        if os.path.isdir(directory):
+            return
+    if create:
+        os.makedirs(directory)
+    else:
+        raise FileNotFoundError(directory)
+
+
+def file_hash(file_path) -> str:
+    hashfunc = hashlib.sha512()
+    with open(file_path, "rb") as file:
+        hashfunc.update(file.read())
+    return hashfunc.hexdigest()
+
+
+@click.command()
 @click.argument("template", nargs=-1, required=True)
 @click.option("--data-dir", type=str, default=_DATA_DIR,
               help="Data directory.")
@@ -65,13 +109,34 @@ class Config:
               help="Templates directory.")
 @click.option("--notes-dir", type=str, default=_NOTES_DIR,
               help="Notes directory.")
+@click.option("--editor", type=str, default=_EDITOR,
+              help="Text editor.")
+@click.option("--create-default-directories", default=True)
+@click.option("--dont-save-note-if-no-changes", default=True)
 @click.pass_context
-def commands(context, **kwargs):
-    context.obj = Config(**kwargs)
+def commands(context, template, **kwargs):
+    config = Config(**kwargs)
+    context.obj = config
+    check_directory(config.templates_dir, create=True)
+    check_directory(config.notes_dir, create=True)
     if kwargs["debug"]:
         logger.setLevel(level=logging.DEBUG)
         logging.basicConfig(level=logging.DEBUG)
         pprint(context.obj)
+    for note_template in template:
+        template_file_path = get_template_file_path(config, note_template)
+        note_type_dir = os.path.join(config.notes_dir, note_template)
+        check_directory(note_type_dir, create=True)
+        note_file_name = str(datetime.datetime.now().isoformat())
+        note_file_path = os.path.join(note_type_dir, note_file_name)
+        shutil.copyfile(template_file_path, note_file_path)
+        old_file_hash = file_hash(note_file_path)
+        subprocess.call([config.editor, note_file_path])
+        if config.dont_save_note_if_no_changes:
+            new_file_hash = file_hash(note_file_path)
+            if new_file_hash == old_file_hash:
+                logging.info("File not modified, removing.")
+                os.remove(note_file_path)
 
 
 if __name__ == "__main__":
