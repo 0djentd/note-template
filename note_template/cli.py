@@ -12,6 +12,9 @@ from pprint import pprint
 
 import click
 import appdirs
+import toml
+
+from pydantic import BaseSettings, BaseModel
 
 
 # Default directories
@@ -23,36 +26,28 @@ _STATE_DIR = appdirs.user_state_dir(**app_dir_settings)
 _LOG_DIR = appdirs.user_log_dir(**app_dir_settings)
 _TEMPLATES_DIR = os.path.join(_STATE_DIR, "default_templates_dir")
 _NOTES_DIR = os.path.join(_STATE_DIR, "default_notes_dir")
-
-# Environment variables
-_PREFIX = "NOTE_TEMPLATE"
-_CONFIG_DIR = os.environ.get(_PREFIX + "_CONFIG_DIR", _CONFIG_DIR)
-_DATA_DIR = os.environ.get(_PREFIX + "_DATA_DIR", _DATA_DIR)
-_CACHE_DIR = os.environ.get(_PREFIX + "_CACHE_DIR", _CACHE_DIR)
-_STATE_DIR = os.environ.get(_PREFIX + "_STATE_DIR", _STATE_DIR)
-_LOG_DIR = os.environ.get(_PREFIX + "_LOG_DIR", _LOG_DIR)
-_EDITOR = os.environ.get(_PREFIX + "_EDITOR", "vim")
-_EDITOR = os.environ.get("EDITOR", _EDITOR)
-_TEMPLATES_DIR = os.environ.get(_PREFIX + "_TEMPLATES_DIR", _TEMPLATES_DIR)
-_NOTES_DIR = os.environ.get(_PREFIX + "_NOTES_DIR", _NOTES_DIR)
+_CONFIG_FILE_PATH = os.environ.get("NOTE_TEMPLATE_CONFIG_FILE",
+                                   os.path.join(_CONFIG_DIR, "config.toml"))
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Config:
-    debug: bool
-    verbose: bool
-    data_dir: str
-    config_dir: str
-    state_dir: str
-    cache_dir: str
-    log_dir: str
-    templates_dir: str
-    notes_dir: str
-    create_default_directories: bool
-    dont_save_note_if_no_changes: bool
-    editor: str
+class Config(BaseSettings):
+    debug: bool = False
+    verbose: bool = False
+    data_dir: str = _DATA_DIR
+    config_dir: str = _CONFIG_DIR
+    state_dir: str = _STATE_DIR
+    cache_dir: str = _CACHE_DIR
+    log_dir: str = _LOG_DIR
+    templates_dir: str = _TEMPLATES_DIR
+    notes_dir: str = _NOTES_DIR
+    create_default_directories: bool = True
+    dont_save_note_if_no_changes: bool = True
+    editor: str = os.environ.get("EDITOR", "vim")
+
+    class Config:
+        env_prefix = "NOTE_TEMPLATE_CONFIG_"
 
 
 def file_name_without_extension(filename: str) -> str:
@@ -88,34 +83,51 @@ def file_hash(file_path) -> str:
         hashfunc.update(file.read())
     return hashfunc.hexdigest()
 
+def filter_dictionary(dictionary) -> dict:
+    result = {}
+    for key, val in dictionary.items():
+        if val is not None:
+            result.update({key: val})
+    return result
+
+
+def read_config_file():
+    data = None
+    with open(_CONFIG_FILE_PATH, "r") as file:
+        data = toml.load(file)
+    return data
+
+
 
 @click.command()
 @click.argument("template", nargs=-1, required=True)
-@click.option("--data-dir", type=str, default=_DATA_DIR,
+@click.option("--data-dir", type=str, required=False,
               help="Data directory.")
-@click.option("--config-dir", type=str, default=_CONFIG_DIR,
+@click.option("--config-dir", type=str, required=False,
               help="Config directory.")
-@click.option("--cache-dir", type=str, default=_CACHE_DIR,
+@click.option("--cache-dir", type=str, required=False,
               help="Cache directory.")
-@click.option("--state-dir", type=str, default=_STATE_DIR,
+@click.option("--state-dir", type=str, required=False,
               help="State directory.")
-@click.option("--log-dir", type=str, default=_LOG_DIR,
+@click.option("--log-dir", type=str, required=False,
               help="Log directory.")
 @click.option("--verbose/--no-verbose",
               help="Show additional information.")
 @click.option("--debug/--no-debug",
               help="Show debug information.")
-@click.option("--templates-dir", type=str, default=_TEMPLATES_DIR,
+@click.option("--templates-dir", type=str, required=False,
               help="Templates directory.")
-@click.option("--notes-dir", type=str, default=_NOTES_DIR,
+@click.option("--notes-dir", type=str, required=False,
               help="Notes directory.")
-@click.option("--editor", type=str, default=_EDITOR,
+@click.option("--editor", type=str, required=False,
               help="Text editor.")
-@click.option("--create-default-directories", default=True)
-@click.option("--dont-save-note-if-no-changes", default=True)
+@click.option("--create-default-directories", required=False)
+@click.option("--dont-save-note-if-no-changes", required=False)
 @click.pass_context
 def commands(context, template, **kwargs):
-    config = Config(**kwargs)
+    config_kwargs = read_config_file()
+    config_kwargs.update(filter_dictionary(kwargs))
+    config = Config(**config_kwargs)
     context.obj = config
     check_directory(config.templates_dir, create=True)
     check_directory(config.notes_dir, create=True)
