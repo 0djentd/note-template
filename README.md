@@ -1,3 +1,15 @@
+![PyPI](https://img.shields.io/pypi/v/note-template)
+![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/0djentd/note-template?include_prereleases)
+![GitHub all releases](https://img.shields.io/github/downloads/0djentd/note-template/total)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/note-template)
+
+![GitHub issues](https://img.shields.io/github/issues/0djentd/note-template)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/0djentd/note-template)
+![GitHub Repo stars](https://img.shields.io/github/stars/0djentd/note-template?style=social)
+
+[![Python package](https://github.com/0djentd/note-template/actions/workflows/python-package.yml/badge.svg)](https://github.com/0djentd/note-template/actions/workflows/python-package.yml)
+[![Pylint](https://github.com/0djentd/note-template/actions/workflows/pylint.yml/badge.svg)](https://github.com/0djentd/note-template/actions/workflows/pylint.yml)
+
 # note-template
 ## Description
 Simple CLI tool to create notes using templates.
